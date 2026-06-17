@@ -97,12 +97,116 @@ app.get('/api/channels/:channelId/playlist', (req, res) => {
     return res.status(404).json({ error: 'Channel not found' });
   }
   const playlist = channelManager.getPlaylist(req.params.channelId);
-  res.json(playlist.map((t, i) => ({
-    index: i,
-    title: t.title,
-    filename: t.filename
-  })));
+  const metadataStatus = channelManager.getMetadataStatus(req.params.channelId);
+  res.json({
+    tracks: playlist.map((t, i) => ({
+      index: i,
+      title: t.title,
+      artist: t.artist,
+      album: t.album,
+      year: t.year,
+      genre: t.genre,
+      duration: t.duration,
+      track: t.track,
+      disc: t.disc,
+      hasCover: t.hasCover,
+      coverHash: t.coverHash,
+      filename: t.filename,
+      format: t.format
+    })),
+    metadataStatus
+  });
 });
+
+app.get('/api/channels/:channelId/playlist/by-artist', (req, res) => {
+  const channel = channelManager.getChannel(req.params.channelId);
+  if (!channel) {
+    return res.status(404).json({ error: 'Channel not found' });
+  }
+  const grouped = channelManager.getPlaylistByArtist(req.params.channelId);
+  const metadataStatus = channelManager.getMetadataStatus(req.params.channelId);
+  res.json({
+    groups: grouped.map(g => ({
+      artist: g.artist,
+      trackCount: g.trackCount,
+      tracks: g.tracks.map((t, i) => ({
+        index: playlistIndexOf(channelManager.getPlaylist(req.params.channelId), t),
+        title: t.title,
+        artist: t.artist,
+        album: t.album,
+        year: t.year,
+        genre: t.genre,
+        duration: t.duration,
+        track: t.track,
+        disc: t.disc,
+        hasCover: t.hasCover,
+        coverHash: t.coverHash,
+        filename: t.filename,
+        format: t.format
+      }))
+    })),
+    metadataStatus
+  });
+});
+
+app.get('/api/channels/:channelId/playlist/by-album', (req, res) => {
+  const channel = channelManager.getChannel(req.params.channelId);
+  if (!channel) {
+    return res.status(404).json({ error: 'Channel not found' });
+  }
+  const grouped = channelManager.getPlaylistByAlbum(req.params.channelId);
+  const metadataStatus = channelManager.getMetadataStatus(req.params.channelId);
+  res.json({
+    groups: grouped.map(g => ({
+      album: g.album,
+      artist: g.artist,
+      year: g.year,
+      trackCount: g.trackCount,
+      hasCover: g.hasCover,
+      coverHash: g.coverHash,
+      tracks: g.tracks.map((t, i) => ({
+        index: playlistIndexOf(channelManager.getPlaylist(req.params.channelId), t),
+        title: t.title,
+        artist: t.artist,
+        album: t.album,
+        year: t.year,
+        genre: t.genre,
+        duration: t.duration,
+        track: t.track,
+        disc: t.disc,
+        hasCover: t.hasCover,
+        coverHash: t.coverHash,
+        filename: t.filename,
+        format: t.format
+      }))
+    })),
+    metadataStatus
+  });
+});
+
+app.get('/api/channels/:channelId/metadata-status', (req, res) => {
+  const channel = channelManager.getChannel(req.params.channelId);
+  if (!channel) {
+    return res.status(404).json({ error: 'Channel not found' });
+  }
+  const status = channelManager.getMetadataStatus(req.params.channelId);
+  res.json(status);
+});
+
+app.get('/api/cover/:coverHash', (req, res) => {
+  const coverHash = req.params.coverHash;
+  const cover = channelManager.getCoverImage(coverHash);
+  if (!cover) {
+    return res.status(404).json({ error: 'Cover not found' });
+  }
+  res.setHeader('Content-Type', cover.format);
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.send(cover.data);
+});
+
+function playlistIndexOf(playlist, track) {
+  return playlist.findIndex(t => t.path === track.path);
+}
 
 app.post('/api/channels/:channelId/play', (req, res) => {
   const { index } = req.body || {};

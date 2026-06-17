@@ -190,9 +190,9 @@ class DJPanel {
   async loadPlaylist(channelId) {
     try {
       const response = await fetch(`${CONFIG.API_BASE}/api/channels/${channelId}/playlist`);
-      const playlist = await response.json();
-      this.playlist = playlist;
-      this.playlistCount.textContent = playlist.length;
+      const data = await response.json();
+      this.playlist = data.tracks || [];
+      this.playlistCount.textContent = this.playlist.length;
       this.renderPlaylist();
     } catch (err) {
       console.error('Failed to load playlist:', err);
@@ -208,7 +208,15 @@ class DJPanel {
     this.playlistEl.innerHTML = this.playlist.map(track => `
       <div class="playlist-item ${track.index === this.currentIndex ? 'current' : ''}" data-index="${track.index}">
         <span class="track-index">${track.index === this.currentIndex ? '♪' : track.index + 1}</span>
-        <span class="track-title">${track.title}</span>
+        <div class="track-info">
+          <div class="track-title">${this.escapeHtml(track.title)}</div>
+          <div class="track-subtitle">
+            <span class="track-artist">${this.escapeHtml(track.artist || '未知艺术家')}</span>
+            <span class="track-divider">·</span>
+            <span class="track-album">${this.escapeHtml(track.album || '未知专辑')}</span>
+          </div>
+        </div>
+        <span class="track-format">${track.format || ''}</span>
       </div>
     `).join('');
 
@@ -218,6 +226,12 @@ class DJPanel {
         this.playTrack(index);
       });
     });
+  }
+
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 
   sendControl(command, params = {}) {

@@ -52,7 +52,16 @@ class WebSocketServer {
       this.broadcastToChannel(channelId, {
         type: 'trackChange',
         channelId,
-        track: { title: track.title, filename: track.filename },
+        track: {
+          title: track.title,
+          artist: track.artist,
+          album: track.album,
+          year: track.year,
+          duration: track.duration,
+          hasCover: track.hasCover,
+          coverHash: track.coverHash,
+          filename: track.filename
+        },
         isPlaying: true
       });
     });
@@ -86,6 +95,34 @@ class WebSocketServer {
         type: 'listenersChange',
         channelId,
         listeners
+      });
+    });
+
+    this.channelManager.on('metadataProgress', (channelId, parsed, total, track) => {
+      this.broadcastToChannel(channelId, {
+        type: 'metadataProgress',
+        channelId,
+        parsed,
+        total,
+        track: {
+          index: this._getTrackIndex(channelId, track),
+          title: track.title,
+          artist: track.artist,
+          album: track.album,
+          year: track.year,
+          duration: track.duration,
+          hasCover: track.hasCover,
+          coverHash: track.coverHash,
+          filename: track.filename
+        }
+      });
+    });
+
+    this.channelManager.on('metadataComplete', (channelId, tracks) => {
+      this.broadcastToChannel(channelId, {
+        type: 'metadataComplete',
+        channelId,
+        total: tracks.length
       });
     });
 
@@ -139,6 +176,8 @@ class WebSocketServer {
     const channel = this.channelManager.getChannel(channelId);
     if (!channel) return;
 
+    const metadataStatus = this.channelManager.getMetadataStatus(channelId);
+
     ws.send(JSON.stringify({
       type: 'status',
       channelId,
@@ -146,6 +185,12 @@ class WebSocketServer {
       isPlaying: channel.isPlaying,
       currentTrack: channel.currentTrack ? {
         title: channel.currentTrack.title,
+        artist: channel.currentTrack.artist,
+        album: channel.currentTrack.album,
+        year: channel.currentTrack.year,
+        duration: channel.currentTrack.duration,
+        hasCover: channel.currentTrack.hasCover,
+        coverHash: channel.currentTrack.coverHash,
         filename: channel.currentTrack.filename
       } : null,
       volume: channel.volume,
@@ -153,11 +198,24 @@ class WebSocketServer {
       playlist: channel.playlist.map((t, i) => ({
         index: i,
         title: t.title,
+        artist: t.artist,
+        album: t.album,
+        year: t.year,
+        duration: t.duration,
+        hasCover: t.hasCover,
+        coverHash: t.coverHash,
         filename: t.filename
       })),
       currentIndex: channel.currentIndex,
-      ffmpegAvailable: this.ffmpegAvailable
+      ffmpegAvailable: this.ffmpegAvailable,
+      metadataStatus
     }));
+  }
+
+  _getTrackIndex(channelId, track) {
+    const channel = this.channelManager.getChannel(channelId);
+    if (!channel) return -1;
+    return channel.playlist.findIndex(t => t.path === track.path);
   }
 
   stop() {

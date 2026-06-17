@@ -17,40 +17,73 @@
     </header>
 
     <main class="main">
-      <section class="channels-section">
-        <h2>频道列表</h2>
-        <div class="channel-list" id="channelList">
+      <section class="sidebar">
+        <div class="channels-section">
+          <h2>频道列表</h2>
+          <div class="channel-list" id="channelList">
+          </div>
         </div>
-      </section>
 
-      <section class="player-section">
-        <div class="player-card">
-          <div class="channel-info">
-            <h2 id="currentChannelName">选择一个频道开始收听</h2>
-            <p id="currentTrack" class="track-name">--</p>
-          </div>
+        <div class="player-section">
+          <div class="player-card">
+            <div class="album-art" id="albumArt">
+              <div class="album-art-placeholder">🎵</div>
+            </div>
 
-          <div class="audio-container">
-            <audio id="audioPlayer" preload="none">
-              您的浏览器不支持音频播放。
-            </audio>
-          </div>
+            <div class="channel-info">
+              <h2 id="currentChannelName">选择一个频道开始收听</h2>
+              <p id="currentTrack" class="track-name">--</p>
+              <p id="currentArtist" class="track-artist">--</p>
+            </div>
 
-          <div class="player-controls">
-            <button id="playBtn" class="control-btn" disabled>
-              <span class="play-icon">▶</span>
-            </button>
-            <div class="volume-control">
+            <div class="audio-container">
+              <audio id="audioPlayer" preload="none">
+                您的浏览器不支持音频播放。
+              </audio>
+            </div>
+
+            <div class="player-controls">
+              <button id="prevBtn" class="control-btn" disabled>
+                <span>⏮</span>
+              </button>
+              <button id="playBtn" class="control-btn play-btn-large" disabled>
+                <span class="play-icon">▶</span>
+              </button>
+              <button id="nextBtn" class="control-btn" disabled>
+                <span>⏭</span>
+              </button>
+            </div>
+
+            <div class="volume-control large">
               <span>🔊</span>
               <input type="range" id="volumeSlider" min="0" max="100" value="80">
             </div>
-          </div>
 
-          <div class="stats">
-            <div class="stat-item">
-              <span class="stat-label">在线收听</span>
-              <span class="stat-value" id="listenerCount">0</span>
+            <div class="stats">
+              <div class="stat-item">
+                <span class="stat-label">在线收听</span>
+                <span class="stat-value" id="listenerCount">0</span>
+              </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="playlist-section">
+        <div class="playlist-header">
+          <h2>播放列表</h2>
+          <div class="view-toggle">
+            <button class="view-btn active" data-view="list">列表</button>
+            <button class="view-btn" data-view="artist">按艺术家</button>
+            <button class="view-btn" data-view="album">按专辑</button>
+          </div>
+          <div class="metadata-status" id="metadataStatus">
+            <span class="loading-spinner"></span>
+            <span id="metadataStatusText">正在解析元数据...</span>
+          </div>
+        </div>
+        <div class="playlist-container" id="playlistContainer">
+          <div class="playlist" id="playlist">
           </div>
         </div>
       </section>

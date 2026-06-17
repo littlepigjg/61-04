@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const EventEmitter = require('events');
+const MetadataManager = require('./metadata-manager');
 
 class ChannelManager extends EventEmitter {
   constructor(config) {
@@ -8,6 +9,8 @@ class ChannelManager extends EventEmitter {
     this.config = config;
     this.channels = new Map();
     this.musicBaseDir = path.resolve(config.musicBaseDir);
+    this.metadataManager = new MetadataManager();
+    this._parsingStatus = new Map();
   }
 
   init() {
@@ -68,17 +71,102 @@ class ChannelManager extends EventEmitter {
       .map(f => ({
         filename: f,
         path: path.join(channel.dir, f),
-        title: path.basename(f, path.extname(f))
+        title: path.basename(f, path.extname(f)),
+        artist: '未知艺术家',
+        album: '未知专辑',
+        year: null,
+        genre: [],
+        duration: null,
+        track: null,
+        disc: null,
+        hasCover: false,
+        coverHash: null,
+        format: path.extname(f).substring(1).toUpperCase()
       }));
 
     channel.playlist = files;
+
+    this._startMetadataParsing(channelId, files);
+
     return files;
+  }
+
+  _startMetadataParsing(channelId, tracks) {
+    if (this._parsingStatus.get(channelId)?.parsing) return;
+
+    const status = {
+      parsing: true,
+      total: tracks.length,
+      parsed: 0,
+      channelId
+    };
+    this._parsingStatus.set(channelId, status);
+
+    this.metadataManager.parsePlaylistTracksAsync(tracks, (parsed, total, track) => {
+      status.parsed = parsed;
+      const channel = this.channels.get(channelId);
+      if (channel) {
+        const idx = channel.playlist.findIndex(t => t.path === track.path);
+        if (idx >= 0) {
+          channel.playlist[idx] = track;
+        }
+        if (channel.currentTrack && channel.currentTrack.path === track.path) {
+          channel.currentTrack = track;
+        }
+      }
+      this.emit('metadataProgress', channelId, parsed, total, track);
+    }).then((parsedTracks) => {
+      status.parsing = false;
+      const channel = this.channels.get(channelId);
+      if (channel) {
+        channel.playlist = parsedTracks;
+        if (channel.currentTrack) {
+          const updated = parsedTracks.find(t => t.path === channel.currentTrack.path);
+          if (updated) {
+            channel.currentTrack = updated;
+          }
+        }
+      }
+      this.emit('metadataComplete', channelId, parsedTracks);
+    }).catch((err) => {
+      status.parsing = false;
+      console.error(`[ChannelManager] Metadata parsing error for ${channelId}:`, err);
+      this.emit('metadataError', channelId, err);
+    });
   }
 
   getPlaylist(channelId) {
     const channel = this.channels.get(channelId);
     if (!channel) return [];
     return channel.playlist;
+  }
+
+  getMetadataStatus(channelId) {
+    const status = this._parsingStatus.get(channelId);
+    if (!status) {
+      return { parsing: false, total: 0, parsed: 0 };
+    }
+    return {
+      parsing: status.parsing,
+      total: status.total,
+      parsed: status.parsed
+    };
+  }
+
+  getPlaylistByArtist(channelId) {
+    const channel = this.channels.get(channelId);
+    if (!channel) return [];
+    return this.metadataManager.groupByArtist(channel.playlist);
+  }
+
+  getPlaylistByAlbum(channelId) {
+    const channel = this.channels.get(channelId);
+    if (!channel) return [];
+    return this.metadataManager.groupByAlbum(channel.playlist);
+  }
+
+  getCoverImage(coverHash) {
+    return this.metadataManager.getCover(coverHash);
   }
 
   play(channelId, trackIndex = null) {
